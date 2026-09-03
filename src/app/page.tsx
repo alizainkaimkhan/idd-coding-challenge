@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import CourseCard from "@/components/CourseCard";
 import SearchBar from "@/components/SearchBar";
+import SubjectFilter from "@/components/SubjectFilter";
 import Pagination from "@/components/Pagination";
 import { matchesQuery } from "@/lib/search";
+import { getUniqueSubjects, matchesSubject } from "@/lib/subjects";
 import { paginate } from "@/lib/pagination";
 import type { Course } from "@/lib/types";
 
@@ -14,6 +16,7 @@ export default function Home() {
   const [courses, setCourses] = useState<Course[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [subject, setSubject] = useState("");
   const [page, setPage] = useState(1);
   const resultsRef = useRef<HTMLDivElement>(null);
   const isFirstRender = useRef(true);
@@ -23,10 +26,25 @@ export default function Home() {
     setPage(1);
   }
 
-  const filteredCourses = useMemo(() => {
+  function handleSubjectChange(next: string) {
+    setSubject(next);
+    setPage(1);
+  }
+
+  const subjects = useMemo(
+    () => (courses ? getUniqueSubjects(courses) : []),
+    [courses]
+  );
+
+  const bySubject = useMemo(() => {
     if (!courses) return null;
-    return courses.filter((course) => matchesQuery(course, query));
-  }, [courses, query]);
+    return courses.filter((course) => matchesSubject(course, subject));
+  }, [courses, subject]);
+
+  const filteredCourses = useMemo(() => {
+    if (!bySubject) return null;
+    return bySubject.filter((course) => matchesQuery(course, query));
+  }, [bySubject, query]);
 
   const pagination = useMemo(() => {
     if (!filteredCourses) return null;
@@ -73,7 +91,18 @@ export default function Home() {
     <main className="min-h-screen p-6 sm:p-10 max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">UofL Course Catalog</h1>
 
-      <SearchBar value={query} onChange={handleQueryChange} />
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        <div className="flex-1">
+          <SearchBar value={query} onChange={handleQueryChange} />
+        </div>
+        <div className="sm:w-48">
+          <SubjectFilter
+            value={subject}
+            onChange={handleSubjectChange}
+            subjects={subjects}
+          />
+        </div>
+      </div>
 
       {error && (
         <p className="text-red-600 dark:text-red-400" role="alert">
