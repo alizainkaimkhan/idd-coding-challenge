@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import CourseCard from "@/components/CourseCard";
+import SearchBar from "@/components/SearchBar";
+import { matchesQuery } from "@/lib/search";
 import type { Course } from "@/lib/types";
 
 const DATA_URL = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/data/courses.json`;
@@ -9,6 +11,12 @@ const DATA_URL = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/data/courses.json`;
 export default function Home() {
   const [courses, setCourses] = useState<Course[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+
+  const filteredCourses = useMemo(() => {
+    if (!courses) return null;
+    return courses.filter((course) => matchesQuery(course, query));
+  }, [courses, query]);
 
   useEffect(() => {
     let cancelled = false;
@@ -36,6 +44,8 @@ export default function Home() {
     <main className="min-h-screen p-6 sm:p-10 max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">UofL Course Catalog</h1>
 
+      <SearchBar value={query} onChange={setQuery} />
+
       {error && (
         <p className="text-red-600 dark:text-red-400" role="alert">
           {error}
@@ -50,12 +60,22 @@ export default function Home() {
         <p className="text-foreground/70">No courses found.</p>
       )}
 
-      {!error && courses !== null && courses.length > 0 && (
-        <ul className="flex flex-col gap-3">
-          {courses.slice(0, 10).map((course) => (
-            <CourseCard key={course.id} course={course} />
-          ))}
-        </ul>
+      {!error && courses !== null && courses.length > 0 && filteredCourses && (
+        <>
+          <p className="text-sm text-foreground/70 mb-4">
+            {filteredCourses.length} of {courses.length} courses
+          </p>
+
+          {filteredCourses.length === 0 ? (
+            <p className="text-foreground/70">No courses match your search.</p>
+          ) : (
+            <ul className="flex flex-col gap-3">
+              {filteredCourses.slice(0, 10).map((course) => (
+                <CourseCard key={course.id} course={course} />
+              ))}
+            </ul>
+          )}
+        </>
       )}
     </main>
   );
